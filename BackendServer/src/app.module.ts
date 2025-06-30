@@ -8,8 +8,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { VideosModule } from './videos/videos.module';
-import { AuthModule } from './auth/auth.module'; // <-- AuthModule 임포트
-import { UserModule } from './auth/user/user.module'; // <-- UserModule 임포트
+import { AuthModule } from './auth/auth.module';
+import { UserModule } from './auth/user/user.module';
+import { VideoInsertModule } from './video-insert/video-insert.module';
+import { ChatModule } from './chat/chat.module';
 import { UsedProductModule } from './used_product/used-product.module';
 import { UsedProduct } from './used_product/entities/used-product.entity';
 
@@ -42,8 +44,9 @@ import { UsedProduct } from './used_product/entities/used-product.entity';
     AuthModule,
     UserModule,
     VideosModule,
+    VideoInsertModule,
+    ChatModule,
     UsedProductModule,
-    // ChatModule, // 채팅 기능이 있다면 ChatModule도 등록해야 합니다.
   ],
   controllers: [AppController],
   providers: [AppService],
