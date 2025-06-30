@@ -11,10 +11,6 @@ import MainPage from "../pages/main/MainPage";
 import ChatListPage from "../pages/chat/ChatListPage";
 import ChatRoomPage from '../pages/chat/ChatRoomPage'; 
 import UserPage from '../pages/user/UserPage'; 
-import UsedProductPage from '../pages/usedProduct/UsedProductPage';
-import CreateUsedProductPage from '../pages/usedProduct/CreateUsedProductPage';
-import UsedProductDetailPage from '../pages/usedProduct/UsedProductDetailPage';
-import UpdateUsedProductPage from '../pages/usedProduct/UpdateUsedProductPage';
 
 const AppRouter: React.FC = () => {
   return (

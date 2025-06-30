@@ -12,8 +12,6 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './auth/user/user.module';
 import { VideoInsertModule } from './video-insert/video-insert.module';
 import { ChatModule } from './chat/chat.module';
-import { UsedProductModule } from './used_product/used-product.module';
-import { UsedProduct } from './used_product/entities/used-product.entity';
 
 @Module({
   imports: [
