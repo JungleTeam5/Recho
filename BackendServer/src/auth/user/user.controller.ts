@@ -24,10 +24,9 @@ export class UserController {
    */
 
   @Post()
-  async createUser(@Body() createUserDto: CreateUserDto): Promise<User> {
-    // 실제 로직은 서비스 계층에 위임합니다.
-    return this.userService.createUser(createUserDto);
-  }
+  async createUser(@Body() createUserDto: CreateUserDto): Promise<Omit<User, 'password' | 'hashedRefreshToken'>> {
+  return this.userService.createUser(createUserDto);
+}
 
   /**
    * 특정 ID를 가진 유저를 조회합니다.

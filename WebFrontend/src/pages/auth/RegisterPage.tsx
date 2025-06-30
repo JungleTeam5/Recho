@@ -1,146 +1,127 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+// src/pages/RegisterPage.tsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    verificationCode: "",
-  });
 
-  const [isEmailSent, setIsEmailSent] = useState(false);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  // 폼 입력을 위한 state
+  const [id, setId] = useState('');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  // 에러 메시지를 위한 state
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSendVerificationCode = () => {
-    if (!formData.email) {
-      alert("이메일을 입력해주세요.");
-      return;
-    }
-    console.log("인증번호 전송:", formData.email);
-    setIsEmailSent(true);
-    // 이메일 인증번호 전송 로직 추가
-  };
-
-  const handleVerifyEmail = () => {
-    if (!formData.verificationCode) {
-      alert("인증번호를 입력해주세요.");
-      return;
-    }
-    console.log("이메일 인증 시도:", formData.verificationCode);
-    setIsEmailVerified(true);
-    // 여기에 인증번호 확인 로직 추가
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!isEmailVerified) {
-      alert("이메일 인증을 완료해주세요.");
+    setError(null);
+
+    // 1. 클라이언트 측 비밀번호 확인
+    if (password !== confirmPassword) {
+      setError('비밀번호가 일치하지 않습니다.');
       return;
     }
-    console.log("회원가입 시도:", formData);
 
-    // 회원가입 성공 시 로그인 페이지로 이동
-    alert("회원가입이 완료되었습니다.");
-    navigate("/login");
-  };
+    try {
+      // 2. NestJS 백엔드로 회원가입 요청
+      const response = await fetch('http://localhost:3000/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // User Entity와 CreateUserDto에 맞춰 데이터를 전송합니다.
+        body: JSON.stringify({ id, username, email, password }),
+      });
 
-  const handleBackToLogin = () => {
-    navigate("/login");
+      // 3. 응답 처리
+      if (!response.ok) {
+        // 아이디 중복 등 서버에서 보낸 에러 메시지를 표시합니다.
+        const errorData = await response.json();
+        throw new Error(errorData.message || '회원가입에 실패했습니다.');
+      }
+
+      // 4. 회원가입 성공
+      alert('회원가입에 성공했습니다! 로그인 페이지로 이동합니다.');
+      navigate('/login'); // 회원가입 성공 후 로그인 페이지로 이동
+
+    } catch (err) {
+      if (err instanceof Error) {
+        console.error('Registration error:', err);
+        setError(err.message);
+      } else {
+        setError('알 수 없는 에러가 발생했습니다.');
+      }
+    }
   };
 
   return (
-    <div>
+    <div style={{ width: '300px', margin: '100px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
       <h1>회원가입</h1>
       <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="username">아이디:</label>
+        {/* 아이디 입력 */}
+        <div style={{ marginBottom: '15px' }}>
+          <label htmlFor="id" style={{ display: 'block', marginBottom: '5px' }}>아이디</label>
           <input
-            type="text"
-            id="username"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            required
+            type="text" id="id" value={id}
+            onChange={(e) => setId(e.target.value)} required
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
-        <div>
-          <label htmlFor="email">이메일:</label>
+
+        {/* 닉네임 입력 */}
+        <div style={{ marginBottom: '15px' }}>
+          <label htmlFor="username" style={{ display: 'block', marginBottom: '5px' }}>닉네임</label>
           <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-          <button
-            type="button"
-            onClick={handleSendVerificationCode}
-            disabled={isEmailSent}
-          >
-            {isEmailSent ? "인증번호 전송됨" : "인증번호 전송"}
-          </button>
-        </div>
-        {isEmailSent && (
-          <div>
-            <label htmlFor="verificationCode">인증번호:</label>
-            <input
-              type="text"
-              id="verificationCode"
-              name="verificationCode"
-              value={formData.verificationCode}
-              onChange={handleChange}
-              required
-            />
-            <button
-              type="button"
-              onClick={handleVerifyEmail}
-              disabled={isEmailVerified}
-            >
-              {isEmailVerified ? "인증 완료" : "인증 확인"}
-            </button>
-          </div>
-        )}
-        <div>
-          <label htmlFor="password">비밀번호:</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
+            type="text" id="username" value={username}
+            onChange={(e) => setUsername(e.target.value)} required
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
-        <div>
-          <label htmlFor="confirmPassword">비밀번호 확인:</label>
+
+        {/* 이메일 입력 */}
+        <div style={{ marginBottom: '15px' }}>
+          <label htmlFor="email" style={{ display: 'block', marginBottom: '5px' }}>이메일</label>
           <input
-            type="password"
-            id="confirmPassword"
-            name="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
+            type="email" id="email" value={email}
+            onChange={(e) => setEmail(e.target.value)} required
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
-        <button type="submit" disabled={!isEmailVerified}>
-          회원가입
+
+        {/* 비밀번호 입력 */}
+        <div style={{ marginBottom: '15px' }}>
+          <label htmlFor="password" style={{ display: 'block', marginBottom: '5px' }}>비밀번호</label>
+          <input
+            type="password" id="password" value={password}
+            onChange={(e) => setPassword(e.target.value)} required
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+          />
+        </div>
+
+        {/* 비밀번호 확인 입력 */}
+        <div style={{ marginBottom: '15px' }}>
+          <label htmlFor="confirmPassword" style={{ display: 'block', marginBottom: '5px' }}>비밀번호 확인</label>
+          <input
+            type="password" id="confirmPassword" value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)} required
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+          />
+        </div>
+
+        {error && <p style={{ color: 'red' }}>{error}</p>}
+        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+          가입하기
         </button>
       </form>
-      <div>
-        <button type="button" onClick={handleBackToLogin}>
-          로그인으로 돌아가기
+      <div style={{ marginTop: '15px', textAlign: 'center' }}>
+        <button 
+          onClick={() => navigate('/login')} 
+          style={{ backgroundColor: 'transparent', border: 'none', color: '#007bff', cursor: 'pointer', padding: 0 }}
+        >
+          로그인 페이지로 돌아가기
         </button>
       </div>
     </div>

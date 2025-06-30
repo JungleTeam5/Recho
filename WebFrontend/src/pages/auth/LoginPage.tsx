@@ -9,38 +9,31 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // 폼의 기본 제출 동작(새로고침) 방지
-    setError(null); // 이전 에러 메시지 초기화
+    e.preventDefault();
+    setError(null);
 
     try {
-      // 1. NestJS 백엔드로 로그인 요청을 보냅니다.
       const response = await fetch('http://localhost:3000/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // 2. HttpOnly 쿠키(refreshToken)를 주고받기 위해 'include' 옵션은 필수입니다.
         credentials: 'include', 
         body: JSON.stringify({ id, password }),
       });
 
-      // 3. 응답 처리
       if (!response.ok) {
-        // 서버에서 401 Unauthorized 같은 에러를 보냈을 경우
         const errorData = await response.json();
         throw new Error(errorData.message || '로그인에 실패했습니다.');
       }
 
-      // 4. 성공적으로 응답을 받았을 경우
       const data = await response.json();
       const { accessToken } = data;
 
-      // 5. 받은 accessToken을 localStorage에 저장합니다.
-      // 실제 애플리케이션에서는 보안을 위해 메모리(상태 관리 라이브러리)에 저장하는 것이 더 좋습니다.
       localStorage.setItem('accessToken', accessToken);
 
       alert('로그인 성공!');
-      navigate('/main'); // 로그인 성공 후 메인 페이지로 이동
+      navigate('/main');
 
     } catch (err) {
       if (err instanceof Error) {
@@ -50,6 +43,11 @@ const LoginPage: React.FC = () => {
         setError('알 수 없는 에러가 발생했습니다.');
       }
     }
+  };
+
+  // 회원가입 버튼 클릭 핸들러
+  const handleRegisterClick = () => {
+    navigate('/register'); // '/register' 경로로 이동
   };
 
   return (
@@ -83,6 +81,16 @@ const LoginPage: React.FC = () => {
           로그인
         </button>
       </form>
+      {/* 회원가입 버튼 추가 */}
+      <div style={{ marginTop: '15px', textAlign: 'center' }}>
+        <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#666' }}>계정이 없으신가요?</p>
+        <button 
+          onClick={handleRegisterClick} 
+          style={{ width: '100%', padding: '10px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          회원가입
+        </button>
+      </div>
     </div>
   );
 };
