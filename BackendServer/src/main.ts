@@ -1,9 +1,13 @@
 // src/main.ts
+import 'reflect-metadata'; // <-- 가장 중요! 이 코드를 최상단에 추가하세요.
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import * as cookieParser from 'cookie-parser'; // cookie-parser 임포트 추가
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(cookieParser()); // cookie-parser를 전역 미들웨어로 설정
 
   // 👇 옵션을 포함하여 CORS 설정 (이 방법을 권장합니다)
   app.enableCors({
