@@ -1,0 +1,125 @@
+/*
+  src/theme.css
+  이 파일에 프로젝트의 커스텀 디자인 시스템을 정의합니다.
+*/
+
+@theme {
+    /* ========================================
+      Colors (색상)
+      ======================================== 
+      - 제공해주신 HEX 코드를 v4에서 권장하는 OKLCH 색상으로 변환했습니다.
+      - 클래스 이름은 'brand-default', 'brand-primary' 등으로 동일하게 사용할 수 있습니다.
+      - 예시: className="bg-brand-primary text-brand-default"
+    */
+    --color-brand-default: oklch(1 0 0); /* #FFFFFF */
+    --color-brand-frame: oklch(0.957 0.012 258.9); /* #F3F4F6 */
+    --color-brand-primary: oklch(0.618 0.22 284.75); /* #8E4DF6 */
+    --color-brand-blue: oklch(0.69 0.178 259.4); /* #4397FD */
+    --color-brand-gray: oklch(0.64 0.015 258.8); /* #61646B */
+    --color-brand-text-primary: oklch(0 0 0); /* #000000 */
+    --color-brand-text-inverse: oklch(1 0 0); /* #FFFFFF */
+    --color-brand-text-secondary: oklch(0.42 0 0); /* #333333 */
+    --color-brand-text-disabled: oklch(0.79 0 0); /* #AAAAAA */
+    --color-brand-error-text: oklch(0.628 0.226 29.5); /* #EF4444 (임의의 빨간색) */
+  
+    /* ========================================
+      Spacing & Sizing (간격 및 크기)
+      ======================================== 
+      - 기존 v3 spacing 값을 CSS 변수로 정의합니다.
+      - 예시: className="p-8" -> padding: 8px;
+    */
+    --spacing-8: 8px;
+    --spacing-16: 16px;
+    --spacing-24: 24px;
+    --spacing-32: 32px;
+    --spacing-40: 40px;
+    --spacing-48: 48px;
+  
+    /* ========================================
+      Border Radius (모서리 둥글기)
+      ======================================== 
+      - 이미지에 있던 radius 값을 의미있는 이름으로 정의합니다.
+      - 예시: className="rounded-button", "rounded-card"
+    */
+    --radius-button: 10px;
+    --radius-card: 20px;
+  }
+  
+  /* ========================================
+    Typography Utilities (타이포그래피 유틸리티)
+    ======================================== 
+    - 제공해주신 fontSize, fontWeight, lineHeight를 조합하여 커스텀 클래스를 만듭니다.
+    - 이제 className="text-title", "text-headline" 등으로 한번에 스타일을 적용할 수 있습니다.
+  */
+  @layer utilities {
+    .text-title {
+      font-size: 32px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+    .text-headline {
+      font-size: 24px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+    .text-subheadline {
+      font-size: 20px;
+      line-height: 1.2;
+      font-weight: 600;
+    }
+    .text-body {
+      font-size: 16px;
+      line-height: 1.5;
+      font-weight: 400;
+    }
+    .text-caption {
+      font-size: 14px;
+      line-height: 1.4;
+      font-weight: 400;
+    }
+    .text-footnote {
+      font-size: 12px;
+      line-height: 1.4;
+      font-weight: 400;
+    }
+    .text-caption-bold {
+      font-size: 14px;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+    .text-button {
+      font-size: 16px;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+    .text-overline {
+      font-size: 12px;
+      line-height: 1.4;
+      font-weight: 500;
+    }
+    .text-input {
+      font-size: 16px;
+      line-height: 1.5;
+      font-weight: 400;
+    }
+    .text-tag {
+      font-size: 14px;
+      line-height: 1.4;
+      font-weight: 600;
+    }
+    .text-navigation {
+      font-size: 14px;
+      line-height: 1.4;
+      font-weight: 500;
+    }
+    .text-error {
+      font-size: 12px;
+      line-height: 1.4;
+      font-weight: 400;
+      color: var(--color-brand-error-text);
+    }
+  }
+/* ========================================
+  Tailwind 기본 스타일 불러오기 (가장 마지막)
+======================================== */
+@import "tailwindcss";
