@@ -1,7 +1,10 @@
 ---
-name: "📝 기타 작업"
+name: "\U0001F4DD 기타 작업"
+about: ''
 title: "[Task] "
-labels: "task"
+labels: ''
+assignees: ''
+
 ---
 
 ## 📋 작업 설명
