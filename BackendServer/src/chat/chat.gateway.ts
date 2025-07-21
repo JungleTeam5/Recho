@@ -148,11 +148,31 @@ export class ChatGateway {
       roomId: string;
       inviteeId: string; // 초대받는 사람의 ID
     },
+    @ConnectedSocket() client: Socket, // 요청을 보낸 클라이언트 소켓
   ) {
-    // 1. ChatService의 joinRoom을 사용해 초대받은 사람을 방에 참여시킵니다.
-    await this.chatService.joinRoom(payload.inviteeId, payload.roomId);
+    try {
+      // 1. 초대할 사용자가 DB에 실제로 존재하는지 확인합니다.
+      const invitee = await this.userService.internalFindById(payload.inviteeId);
+      if (!invitee) {
+        // 사용자가 없으면 초대를 요청한 클라이언트에게만 실패 이벤트를 보냅니다.
+        client.emit('inviteFailed', { message: '존재하지 않는 사용자입니다.' });
+        return;
+      }
 
-    // 2. 해당 방에 있는 모든 사람에게 새로운 유저가 참여했음을 알립니다.
-    this.server.to(payload.roomId).emit('userJoined', payload.inviteeId);
+      // 2. ChatService의 joinRoom을 사용해 초대받은 사람을 방에 참여시킵니다.
+      await this.chatService.joinRoom(payload.inviteeId, payload.roomId);
+
+      // 3. (성공) 해당 방에 있는 모든 사람에게 새로운 유저가 참여했음을 알립니다.
+      // 이제 사용자 이름을 포함하여 더 친절한 메시지를 보낼 수 있습니다.
+      this.server.to(payload.roomId).emit('userInvited', {
+        roomId: payload.roomId,
+        username: invitee.username, // DB에서 조회한 사용자 이름
+      });
+
+    } catch (error) {
+      // 그 외 예외 처리 (예: DB 오류 등)
+      console.error('초대 중 에러 발생:', error);
+      client.emit('inviteFailed', { message: '초대 중 오류가 발생했습니다.' });
+    }
   }
 }
