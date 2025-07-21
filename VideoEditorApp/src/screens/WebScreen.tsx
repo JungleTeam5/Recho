@@ -1,5 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { SafeAreaView, StyleSheet, Alert, BackHandler } from 'react-native';
+import {
+  SafeAreaView,
+  StyleSheet,
+  Alert,
+  BackHandler,
+  ActivityIndicator,
+  View,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { type StackNavigationProp } from '@react-navigation/stack';
@@ -22,6 +31,8 @@ const WebScreen: React.FC = () => {
   const route = useRoute<WebScreenRouteProp>();
   const webViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [scrollY, setScrollY] = useState<number>(0);
 
   const onNavigationStateChange = (event: WebViewNavigationEvent) => {
     setCanGoBack(event.canGoBack);
@@ -31,14 +42,17 @@ const WebScreen: React.FC = () => {
     const handleBackPress = () => {
       if (canGoBack && webViewRef.current) {
         webViewRef.current.goBack();
-        return true; 
+        return true;
       }
       return false;
     };
-    
+
     // BackHandler 이벤트 리스너를 등록합니다.
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
-    
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress,
+    );
+
     // 컴포넌트가 언마운트될 때 리스너를 제거합니다.
     return () => backHandler.remove();
   }, [canGoBack]);
@@ -98,10 +112,12 @@ const WebScreen: React.FC = () => {
     window.addEventListener('error', function(event) {
       postConsoleMessage('error', 'Uncaught Error: ' + event.message);
     });
-    
+
     window.addEventListener('unhandledrejection', function(event) {
       postConsoleMessage('error', 'Unhandled Rejection: ', event.reason);
     });
+
+
 
     true; // note: this is required, or you'll sometimes get silent failures
   `;
@@ -271,6 +287,7 @@ const WebScreen: React.FC = () => {
             await AsyncStorage.setItem('accessToken', message.token);
           }
           break;
+
         default:
           console.warn('Unknown message type:', message.type);
       }
@@ -281,6 +298,39 @@ const WebScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
+      {isRefreshing && (
+        <View style={styles.refreshIndicator}>
+          <ActivityIndicator size="small" color="#007AFF" />
+          <Text style={styles.refreshText}>새로고침 중...</Text>
+        </View>
+      )}
+
+      {/* 수동 새로고침 버튼 */}
+      <TouchableOpacity
+        style={styles.refreshButton}
+        onPress={() => {
+          console.log('새로고침 버튼 클릭됨');
+          setIsRefreshing(true);
+
+          // 현재 페이지 새로고침만 실행
+          if (webViewRef.current) {
+            try {
+              webViewRef.current.reload();
+              console.log('현재 페이지 새로고침 실행됨');
+            } catch (error) {
+              console.log('새로고침 실패:', error);
+            }
+          }
+
+          // 1초 후 새로고침 상태 해제
+          setTimeout(() => {
+            setIsRefreshing(false);
+          }, 1000);
+        }}
+      >
+        <Text style={styles.refreshButtonText}>새로고침</Text>
+      </TouchableOpacity>
+
       <WebView
         ref={webViewRef}
         source={{ uri: webFrontendUrl }}
@@ -307,6 +357,38 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
+  },
+  refreshIndicator: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  refreshText: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#007AFF',
+  },
+  refreshButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    zIndex: 1000,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  refreshButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 
