@@ -183,7 +183,9 @@ export class ApplicationService {
 
         // ✅ 6.5 정원이 찼는지 확인
         if (sessionEnsemble.nowRecruitCount >= sessionEnsemble.recruitCount) {
-          throw new ForbiddenException('해당 세션은 이미 모집이 완료되었습니다.');
+          throw new ForbiddenException(
+            '해당 세션은 이미 모집이 완료되었습니다.',
+          );
         }
 
         // 7. 새로운 지원자 생성 (여기서 관계형 엔티티를 직접 할당)
@@ -196,7 +198,6 @@ export class ApplicationService {
 
         const savedApplier = await transactionalEntityManager.save(newApplier);
 
-
         // 8. nowRecruitCount를 증가시킴
         await transactionalEntityManager.increment(
           SessionEnsemble,
@@ -206,27 +207,34 @@ export class ApplicationService {
         );
 
         // 8.5 증가 이후에 다시 조회해서 실제 최신 nowRecruitCount로 비교
-        const sessionEnsembleAfterUpdate = await transactionalEntityManager.findOne(
-          SessionEnsemble,
-          { where: { sessionId: sessionId } }
-        );
+        const sessionEnsembleAfterUpdate =
+          await transactionalEntityManager.findOne(SessionEnsemble, {
+            where: { sessionId: sessionId },
+          });
 
         if (
           !sessionEnsembleAfterUpdate ||
-          sessionEnsembleAfterUpdate.nowRecruitCount > sessionEnsembleAfterUpdate.recruitCount
+          sessionEnsembleAfterUpdate.nowRecruitCount >
+            sessionEnsembleAfterUpdate.recruitCount
         ) {
           throw new ForbiddenException('정원이 초과되었습니다.');
         }
 
         // 9. 세션 전체 조회 (같은 recruitEnsemble에 속한 것들)
-        const allSessions = await transactionalEntityManager.find(SessionEnsemble, {
-          where: { recruitEnsemble: { postId: recruitEnsemblePost.postId } },
-        });
+        const allSessions = await transactionalEntityManager.find(
+          SessionEnsemble,
+          {
+            where: { recruitEnsemble: { postId: recruitEnsemblePost.postId } },
+          },
+        );
 
         const newTotalCount = allSessions.reduce((sum, session) => {
-          return sum + (session.sessionId === sessionEnsemble.sessionId
-            ? session.nowRecruitCount + 1 // 방금 증가시킨 세션은 +1 추가
-            : session.nowRecruitCount);
+          return (
+            sum +
+            (session.sessionId === sessionEnsemble.sessionId
+              ? session.nowRecruitCount + 1 // 방금 증가시킨 세션은 +1 추가
+              : session.nowRecruitCount)
+          );
         }, 0);
 
         // 10. totalRecruitCnt를 해당 값으로 갱신
