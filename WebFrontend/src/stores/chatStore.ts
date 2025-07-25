@@ -157,6 +157,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     });
     currentSocket.on('userInvited', (data: { username: string; roomId: string }) => {
+      // 현재 보고 있는 채팅방에만 시스템 메시지를 추가합니다.
       if (get().roomId === data.roomId) {
         const systemMessage: Message = {
           id: `system-${Date.now()}`,
@@ -165,8 +166,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
           createdAt: new Date().toISOString(),
           isSystem: true,
         };
-        set((state) => ({ messages: [...state.messages, systemMessage] }));
+        set((state) => ({ messages: [...state.messages, systemMessage] })); // 상태에 메시지 추가
       }
+    });
+
+    // ✨ 유저 초대 실패 리스너 추가
+    currentSocket.on('inviteFailed', (data: { message: string }) => {
+      // 간단하게 alert로 실패 알림을 띄웁니다.
+      // (실제 프로덕션에서는 toast 라이브러리 사용을 권장합니다.)
+      alert(`초대 실패: ${data.message}`);
     });
     currentSocket.connect();
   },
