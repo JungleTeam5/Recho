@@ -92,7 +92,8 @@ export class PracticeRoomService {
     const postIds = results.map((p) => p.postId);
     const thumbnails = await this.imageRepo
       .createQueryBuilder('image')
-      .where('image.refPostId IN (:...postIds)', { postIds })
+      .where('image.refIn = :refIn', { refIn: 'PRACTICE-ROOM' })
+      .andWhere('image.refPostId IN (:...postIds)', { postIds })
       .andWhere('image.isThumbnail = true')
       .andWhere("image.imageKey LIKE :pattern", { pattern: '%/thumbnail/%' })
       .getMany();
@@ -208,7 +209,7 @@ export class PracticeRoomService {
       throw new NotFoundException(`Post withID #${postId} not found`);
     }
 
-    const images = await this.imageService.findImageByRefPostId(postId);
+    const images = await this.imageService.findImageByRefPostId(postId, "PRACTICE-ROOM");
     const imageIds = images.map((img) => img.imageId);
     const imageUrl = images.map((img) => img.imageKey);
     return {
@@ -230,7 +231,7 @@ export class PracticeRoomService {
     }
 
     // 모든 이미지 조회 (원본 + 썸네일 포함)
-    const images = await this.imageService.findImageByRefPostId(postId);
+    const images = await this.imageService.findImageByRefPostId(postId, "PRACTICE-ROOM");
     // 상세 페이지에서는 썸네일이 아닌 '원본 이미지'만 사용하므로 필터링
     const originalImages = images.filter((img) => !img.imageKey.includes('/thumbnail/'));
     const imageIds = originalImages.map((img) => img.imageId);
@@ -300,7 +301,7 @@ export class PracticeRoomService {
     
     // -- 이미지 수정 로직 추가
     if (updateDto.imageIds) {
-      const allImages = await this.imageService.findImageByRefPostId(postId);
+      const allImages = await this.imageService.findImageByRefPostId(postId, "PRACTICE-ROOM");
       const existingImageIds = allImages.map((img) => img.imageId);
 
       const toDisconnect = existingImageIds.filter(

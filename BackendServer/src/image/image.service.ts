@@ -194,9 +194,9 @@ export class ImageService {
     console.log('이미지 업데이트 결과:', result);
   }
 
-  async findImageByRefPostId(refPostId: number): Promise<Image[]> {
+  async findImageByRefPostId(refPostId: number, refIn: string): Promise<Image[]> {
     return this.imageRepository.find({
-      where: { refPostId },
+      where: { refPostId, refIn },
       order: { uploadOrder: 'ASC' },
     });
   }
