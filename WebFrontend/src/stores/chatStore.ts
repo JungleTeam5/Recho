@@ -19,7 +19,7 @@ export interface Message {
   isSystem?: boolean;
 }
 
-interface ChatRoom {
+export interface ChatRoom {
   id: string;
   name?: string;
   type: 'PRIVATE' | 'GROUP';
@@ -51,6 +51,7 @@ interface ChatState {
   roomId: string | null;
   messages: Message[];
   chatPartner: ChatPartner;
+  currentRoom: ChatRoom | null; // 방 정보 상태
   isModalOpen: boolean;
   modalType: 'invite' | 'leave' | null;
   page: number;
@@ -76,6 +77,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   roomId: null,
   messages: [],
   chatPartner: { id: null, username: '대화 상대 로딩...', profileImageUrl: null },
+  currentRoom: null, // 방 정보 초기화
   isModalOpen: false,
   modalType: null,
   page: 1,
@@ -94,56 +96,38 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   initializeSocketListeners: () => {
-    // 이미 리스너가 설정되었으면 중복 실행 방지
     const currentSocket = get().socket;
     if (currentSocket.listeners('connect').length > 0) {
-      console.log('Socket listeners already initialized.');
-      // 만약 연결이 끊겼을 수 있으니 재연결 시도
       if (!currentSocket.connected) {
         currentSocket.connect();
       }
       return;
     }
 
-    console.log('Initializing socket listeners...');
-
     currentSocket.on('connect', () => {
-      console.log('✅ 소켓 연결 성공!');
       set({ isConnected: true });
-
-      // ✨ 중요: 연결 성공 후, 내가 속한 모든 방에 다시 조인합니다.
-      // 이렇게 하면 페이지 이동 시에도 항상 방에 참여한 상태가 유지됩니다.
       const { user } = useAuthStore.getState();
       if (user) {
-        // App.tsx에서 이관된 로직
         axiosInstance.get<MyRoom[]>('chat/my-rooms')
           .then(response => {
             const myRooms = response.data;
             if (myRooms && myRooms.length > 0) {
-              console.log('Re-joining all my rooms:', myRooms.map(r => r.id));
               myRooms.forEach(room => {
                 currentSocket.emit('joinRoom', { id: user.id, roomId: room.id });
               });
             }
           })
-          .catch(error => {
-            console.error("Failed to fetch and join my rooms on connect", error);
-          });
+          .catch(error => console.error("Failed to fetch and join my rooms on connect", error));
       }
     });
-    currentSocket.on('disconnect', () => {
-      console.log('❌ 소켓 연결이 끊어졌습니다.');
-      set({ isConnected: false });
-    });
+
+    currentSocket.on('disconnect', () => set({ isConnected: false }));
     currentSocket.on('newMessage', (message: Message) => {
       if (get().roomId === message.roomId) {
         set((state) => ({ messages: [...state.messages, message] }));
       }
     });
-    currentSocket.on('unreadCountUpdated', () => {
-      console.log('🔄 안 읽은 메시지 수 업데이트 신호 수신!');
-      get().fetchTotalUnreadCount();
-    });
+    currentSocket.on('unreadCountUpdated', () => get().fetchTotalUnreadCount());
     currentSocket.on('userLeft', (data: { username: string; roomId: string }) => {
       if (get().roomId === data.roomId) {
         const systemMessage: Message = {
@@ -168,7 +152,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set((state) => ({ messages: [...state.messages, systemMessage] }));
       }
     });
-    currentSocket.connect();
+
+    if (!currentSocket.connected) {
+      currentSocket.connect();
+    }
   },
   
   disconnectSocket: () => {
@@ -181,51 +168,51 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { user: currentUser } = useAuthStore.getState();
     if (!currentUser) return;
 
-    // ✨ 중요: 여기서 joinRoom 이벤트를 보내지 않습니다.
-    // 소켓이 연결될 때 App.tsx나 리스너에서 모든 방에 미리 join하기 때문입니다.
-    // get().socket.emit('joinRoom', { id: currentUser.id, roomId });
-
+    // 이전 상태 초기화
     set({
       roomId,
       messages: [],
-      chatPartner: { id: null, username: '로딩 중...', profileImageUrl: null },
       page: 1,
       hasMore: true,
       isLoadingMore: false,
+      currentRoom: null,
+      chatPartner: { id: null, username: '로딩 중...', profileImageUrl: null },
     });
 
-    try {
-      // 이제 이 API는 사용자가 방에 참여한 것이 보장된 상태에서 호출됩니다.
-      const response = await axiosInstance.get(`chat/rooms/${roomId}/history?page=1&limit=20`);
-      console.log('history data', response.data);
+    // ✨✨✨ 중요: 이 코드가 실시간 메시지 수신을 위해 반드시 필요합니다.
+    // 채팅방에 입장할 때마다 서버의 'Room'에 소켓을 조인시킵니다.
+    get().socket.emit('joinRoom', { id: currentUser.id, roomId });
 
-      const messageHistory: Message[] = response.data.reverse();
+    try {
+      // 1. 방 상세 정보 가져오기
+      const roomDetailsResponse = await axiosInstance.get<ChatRoom>(`chat/rooms/${roomId}`);
+      const roomData = roomDetailsResponse.data;
+      set({ currentRoom: roomData });
+
+      // 2. 방 타입에 따라 대화 상대 설정
+      if (roomData.type === 'PRIVATE') {
+        const otherUser = roomData.userRooms.find((ur: any) => ur.user.id !== currentUser.id)?.user;
+        if (otherUser) {
+          set({ chatPartner: { id: otherUser.id, username: otherUser.username, profileImageUrl: otherUser.profileImageUrl } });
+        } else {
+          set({ chatPartner: { id: null, username: '새로운 대화', profileImageUrl: null } });
+        }
+      }
+      
+      // 3. 메시지 기록 가져오기
+      const historyResponse = await axiosInstance.get(`chat/rooms/${roomId}/history?page=1&limit=20`);
+      const messageHistory: Message[] = historyResponse.data.reverse();
+      
       set({ 
         messages: messageHistory,
         page: 2,
-        hasMore: response.data.length === 20, 
+        hasMore: historyResponse.data.length === 20, 
       });
-      const partner = messageHistory.find(
-        (msg) => msg.senderId && msg.senderId !== currentUser.id
-      )?.sender;
-      if (partner) {
-        set({
-          chatPartner: { id: partner.id, username: partner.username, profileImageUrl: partner.profileImageUrl },
-        });
-      } else {
-        const roomDetailsResponse = await axiosInstance.get(`chat/rooms/${roomId}`);
-        const otherUser = roomDetailsResponse.data.userRooms.find((ur: UserRoom) => ur.user.id !== currentUser.id)?.user;
-        set({
-          chatPartner: otherUser 
-            ? { id: otherUser.id, username: otherUser.username, profileImageUrl: otherUser.profileImageUrl }
-            : { id: null, username: '새로운 대화', profileImageUrl: null },
-        });
-      }
+      
     } catch (error) {
-      console.error('메시지 기록 로딩 실패:', error);
+      console.error('채팅방 초기화 실패:', error);
       set({ chatPartner: { id: null, username: '정보 없음', profileImageUrl: null }});
     }
-    get().socket.emit('joinRoom', { id: currentUser.id, roomId });
   },
 
   sendMessage: (content) => {
@@ -281,6 +268,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       roomId: null,
       messages: [],
       chatPartner: { id: null, username: '', profileImageUrl: null },
+      currentRoom: null, 
     });
   },
 }));

@@ -81,7 +81,8 @@ export class UsedProductService {
     // 각 상품에 연결된 썸네일 이미지만 조회 (썸네일 플래그 + 경로 기반으로 이중 필터링)
     const thumbnails = await this.imageRepo
       .createQueryBuilder('image')
-      .where('image.refPostId IN (:...productIds)', { productIds })
+      .where('image.refIn = :refIn', { refIn: 'USED-PRODUCTS' })
+      .andWhere('image.refPostId IN (:...productIds)', { productIds })
       .andWhere('image.isThumbnail = true')
       .andWhere("image.imageKey LIKE :pattern", { pattern: '%/thumbnail/%' })
       .getMany();
@@ -162,7 +163,7 @@ export class UsedProductService {
     if (!product) {
       throw new NotFoundException(`Product with ID #${productId} not found.`);
     }
-    const images = await this.imageService.findImageByRefPostId(productId);
+    const images = await this.imageService.findImageByRefPostId(productId, "USED-PRODUCTS");
     const imageIds = images.map((img) => img.imageId);
     const imageUrl = images.map((img) => img.imageKey);
     return {
@@ -185,7 +186,7 @@ export class UsedProductService {
       throw new NotFoundException(`Product with ID #${productId} not found.`);
     }
     // 모든 이미지 조회 (원본 + 썸네일 포함)
-    const images = await this.imageService.findImageByRefPostId(productId);
+    const images = await this.imageService.findImageByRefPostId(productId, "USED-PRODUCTS");
     // 상세 페이지에서는 썸네일이 아닌 '원본 이미지'만 사용하므로 필터링
     const originalImages = images.filter((img) => !img.imageKey.includes('/thumbnail/'));
     const imageIds = originalImages.map((img) => img.imageId);
@@ -257,7 +258,7 @@ export class UsedProductService {
     }
     // -- 이미지 수정 로직 추가
     if (updateDto.imageIds) {
-      const allImages = await this.imageService.findImageByRefPostId(productId);
+      const allImages = await this.imageService.findImageByRefPostId(productId, "USED-PRODUCTS");
       const existingImageIds = allImages.map((img) => img.imageId);
 
       const toDisconnect = existingImageIds.filter(

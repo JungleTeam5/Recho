@@ -6,7 +6,7 @@ import { motion, useMotionValue } from "framer-motion";
 // Zustand 스토어 임포트
 import { useAuthStore } from "../../stores/authStore";
 import { useChatStore } from "../../stores/chatStore";
-import type { Message } from "../../stores/chatStore";
+import type { Message } from "../../stores/chatStore"; // ✨ 1. import 구문 정리
 // 컴포넌트 임포트
 import MessageBubble from "@/components/molecules/message/MessageBubble";
 import PrimaryButton from "@/components/atoms/button/PrimaryButton";
@@ -38,7 +38,6 @@ const ChatRoomPage: React.FC = () => {
   const { user } = useAuthStore();
   const id = user?.id;
 
-  // ✨ 스토어에서 fetchTotalUnreadCount 액션 가져오기
   const {
     isConnected,
     messages,
@@ -46,6 +45,7 @@ const ChatRoomPage: React.FC = () => {
     hasMore,
     loadMoreMessages,
     chatPartner,
+    currentRoom,
     isModalOpen,
     modalType,
     initializeRoom,
@@ -55,21 +55,52 @@ const ChatRoomPage: React.FC = () => {
     leaveCurrentRoom,
     openModal,
     closeModal,
-    fetchTotalUnreadCount, // ✨ 추가
+    fetchTotalUnreadCount,
   } = useChatStore();
-
-  const goToUserProfile = () => {
-    if (chatPartner.id) {
-      navigate(`/users/${chatPartner.id}`);
-    }
-  };
-
+  
+  // ✨ 2. 모든 Hooks를 컴포넌트 최상단으로 이동
   const [newMessage, setNewMessage] = useState("");
   const [inviteeId, setInviteeId] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const dragX = useMotionValue(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+
+  useEffect(() => {
+    if (!roomId || !user) return;
+
+    const validateAndInitialize = async () => {
+      try {
+        await axiosInstance.get(`/chat/rooms/${roomId}`);
+        await axiosInstance.post(`/chat/rooms/${roomId}/read`);
+        await fetchTotalUnreadCount();
+        
+        // isConnected 상태가 바뀔 때마다 이 useEffect가 다시 실행되므로,
+        // isConnected가 true일 때 initializeRoom을 호출합니다.
+        if (isConnected) {
+          initializeRoom(roomId);
+        }
+      } catch (error) {
+        console.error("접근 권한이 없거나 존재하지 않는 채팅방입니다.", error);
+        alert("접근할 수 없는 채팅방입니다.");
+        navigate("/main");
+      }
+    };
+
+    validateAndInitialize();
+
+    return () => {
+      cleanupRoom();
+    };
+  }, [roomId, user, isConnected, navigate, initializeRoom, fetchTotalUnreadCount, cleanupRoom]);
+
+  useEffect(() => {
+    if (!isLoadingMore) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages.length, isLoadingMore]);
+
 
   const handleScroll = () => {
     const container = scrollContainerRef.current;
@@ -87,55 +118,6 @@ const ChatRoomPage: React.FC = () => {
       }
     }
   };
-
-  useEffect(() => {
-    if (!roomId || !user) return;
-
-    const validateAndInitialize = async () => {
-      try {
-        // 1. (선택적) 방 접근 권한 확인 API 호출은 유지할 수 있습니다.
-        await axiosInstance.get(`/chat/rooms/${roomId}`);
-        
-        // 2. 방에 들어오자마자 메시지를 읽음으로 처리
-        await axiosInstance.post(`/chat/rooms/${roomId}/read`);
-        
-        // 3. 전체 안 읽은 메시지 수 다시 가져오기
-        await fetchTotalUnreadCount();
-
-        // 4. ✨ isConnected 상태가 true일 때만 방 정보를 초기화합니다.
-        if (isConnected) {
-          initializeRoom(roomId);
-        }
-      } catch (error) {
-        console.error("접근 권한이 없거나 존재하지 않는 채팅방입니다.", error);
-        alert("접근할 수 없는 채팅방입니다.");
-        navigate("/main");
-      }
-    };
-
-    validateAndInitialize();
-
-    return () => {
-      cleanupRoom();
-    };
-  // ✨ 의존성 배열에서 initializeRoom, cleanupRoom, fetchTotalUnreadCount 제거
-  // 이 함수들은 일반적으로 재생성되지 않으므로 불필요한 재실행을 유발할 수 있습니다.
-  // isConnected가 변경될 때 validateAndInitialize가 다시 실행되도록 하는 것이 핵심입니다.
-}, [
-  roomId, 
-  user, 
-  isConnected, 
-  navigate, 
-  initializeRoom, 
-  fetchTotalUnreadCount, 
-  cleanupRoom
-]);
-
-  useEffect(() => {
-    if (!isLoadingMore) {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages.length, isLoadingMore]);
 
   const handleSendMessage = () => {
     if (!newMessage.trim()) return;
@@ -161,7 +143,21 @@ const ChatRoomPage: React.FC = () => {
     setInviteeId("");
   };
 
-  if (!isConnected || !user) {
+  const goToUserProfile = () => {
+    if (currentRoom?.type === 'PRIVATE' && chatPartner.id) {
+      navigate(`/users/${chatPartner.id}`);
+    }
+  };
+
+  // ✨ 3. 변수 선언도 조건부 return 위로 이동
+  const roomTitle = currentRoom?.type === 'GROUP' 
+    ? currentRoom.name || "그룹 채팅" 
+    : chatPartner.username;
+    
+  const isProfileButtonDisabled = currentRoom?.type === 'GROUP' || !chatPartner.id;
+
+  // ✨ 4. 로딩 UI 처리는 모든 Hooks가 호출된 후에 수행
+  if (!isConnected || !user || !currentRoom) {
     return (
       <div className="flex flex-col h-screen max-w-4xl mx-auto bg-brand-default">
         <header className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -181,14 +177,22 @@ const ChatRoomPage: React.FC = () => {
         <button onClick={() => navigate("/chat")} className="p-2 text-brand-gray hover:text-brand-primary">
           <Icon name="back" />
         </button>
-        <button onClick={goToUserProfile} className="flex items-center gap-3 p-2 -ml-2 rounded-lg hover:bg-gray-100" disabled={!chatPartner.id}>
-          <Avatar src={chatPartner.profileImageUrl || DEFAULT_IMAGES.PROFILE} alt={chatPartner.username} size={32} />
-          <h2 className="text-subheadline text-brand-text-primary">{chatPartner.username}</h2>
+        <button 
+          onClick={goToUserProfile} 
+          className="flex items-center gap-3 p-2 -ml-2 rounded-lg hover:bg-gray-100" 
+          disabled={isProfileButtonDisabled}
+        >
+          {currentRoom.type === 'PRIVATE' && (
+            <Avatar src={chatPartner.profileImageUrl || DEFAULT_IMAGES.PROFILE} alt={chatPartner.username} size={32} />
+          )}
+          <h2 className="text-subheadline text-brand-text-primary">{roomTitle}</h2>
         </button>
         <div className="flex items-center gap-2">
-          <button onClick={() => openModal("invite")} className="p-2 text-brand-gray hover:text-brand-primary">
-            <Icon name="addUser" size={22} />
-          </button>
+          {currentRoom.type === 'GROUP' && (
+             <button onClick={() => openModal("invite")} className="p-2 text-brand-gray hover:text-brand-primary">
+               <Icon name="addUser" size={22} />
+             </button>
+          )}
           <button onClick={() => openModal("leave")} className="p-2 text-brand-gray hover:text-brand-error-text">
             <Icon name="exit" />
           </button>
